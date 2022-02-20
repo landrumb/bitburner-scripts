@@ -1,11 +1,16 @@
 import { NS } from '@ns';
 
 const owned = new Set<string>();
+let next_hack_level = Infinity;
+let next_hack_ports = Infinity;
 
 async function recursiveRootAccess(ns: NS, host: string, level: number, ports: number): Promise<void> {
   const neighbors = await ns.scan(host);
 
   for (const neighbor of neighbors) {
+    const reqHackingLevel = ns.getServerRequiredHackingLevel(neighbor);
+    const reqPorts = ns.getServerNumPortsRequired(neighbor);
+
     if (ns.hasRootAccess(neighbor)) {
       if (owned.has(neighbor)) {
         continue;
@@ -14,7 +19,7 @@ async function recursiveRootAccess(ns: NS, host: string, level: number, ports: n
         owned.add(neighbor);
         await recursiveRootAccess(ns, neighbor, level, ports);
       }
-    } else if (ns.getServerRequiredHackingLevel(neighbor) <= level && ns.getServerNumPortsRequired(neighbor) <= ports) {
+    } else if (reqHackingLevel <= level && reqPorts <= ports) {
       if (ports >= 1) {
         ns.brutessh(neighbor);
       }
@@ -34,6 +39,9 @@ async function recursiveRootAccess(ns: NS, host: string, level: number, ports: n
       ns.tprint(`${neighbor} nuked`);
       owned.add(neighbor);
       await recursiveRootAccess(ns, neighbor, level, ports);
+    } else {
+      next_hack_level = Math.min(next_hack_level, reqHackingLevel);
+      next_hack_ports = Math.min(next_hack_ports, reqPorts);
     }
   }
 }
@@ -54,11 +62,12 @@ export async function main(ns: NS): Promise<void> {
   // getting root access on all possible computers
   owned.add("home");
   await recursiveRootAccess(ns, "home", level, ports);
+  ns.tprint(`Next hack at level ${next_hack_level} with ${next_hack_ports} ports`);
 
   // hacking target from all owned computers  
   const target = ns.args[0].toString();
   const moneyThreshold = ns.getServerMaxMoney(target) * 0.75;
-  const securityThreshold = ns.getServerSecurityLevel(target) + 5;
+  const securityThreshold = ns.getServerBaseSecurityLevel(target) + 5;
 
   for (const host of owned) {
     const max_threads = getMaxThreads(ns, host, "hack_horse.js");
@@ -66,4 +75,7 @@ export async function main(ns: NS): Promise<void> {
     await ns.scp("hack_horse.js", "home", host);
     await ns.exec("hack_horse.js", host, max_threads, target, moneyThreshold, securityThreshold);
   }
+
+  // spawning master_waiter.js
+  ns.spawn("master_waiter.js", 1, target, next_hack_level as unknown as string, next_hack_ports as unknown as string);
 }
