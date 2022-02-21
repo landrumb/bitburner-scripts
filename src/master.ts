@@ -1,6 +1,6 @@
 import { NS } from '@ns';
 
-const owned = new Set<string>();
+let owned = new Set<string>();
 let next_hack_level = Infinity;
 let next_hack_ports = Infinity;
 
@@ -15,7 +15,7 @@ async function recursiveRootAccess(ns: NS, host: string, level: number, ports: n
       if (owned.has(neighbor)) {
         continue;
       } else {
-        ns.tprint(`root access to ${neighbor} discovered`);
+        // ns.tprint(`root access to ${neighbor} discovered`);
         owned.add(neighbor);
         await recursiveRootAccess(ns, neighbor, level, ports);
       }
@@ -40,8 +40,10 @@ async function recursiveRootAccess(ns: NS, host: string, level: number, ports: n
       owned.add(neighbor);
       await recursiveRootAccess(ns, neighbor, level, ports);
     } else {
-      next_hack_level = Math.min(next_hack_level, reqHackingLevel);
-      next_hack_ports = Math.min(next_hack_ports, reqPorts);
+      if (next_hack_level > reqHackingLevel && reqHackingLevel > 1) {
+        next_hack_level = Math.min(next_hack_level, reqHackingLevel);
+        next_hack_ports = Math.min(next_hack_ports, reqPorts);
+      }
     }
   }
 }
@@ -58,6 +60,15 @@ export async function main(ns: NS): Promise<void> {
     0
   );
   ns.tprint(`hack level: ${level}, ports: ${ports}`);
+
+  ns.scriptKill("master_waiter.js", "home")
+  // not sure if these are static so I'm just making sure they get set back to Infinity
+  next_hack_level = Infinity;
+  next_hack_ports = Infinity;
+  owned = new Set<string>();
+
+  // starting pserver_updater.js
+  ns.exec("pserver_updater.js", "home", 1, ns.args[0] as string);
 
   // getting root access on all possible computers
   owned.add("home");
