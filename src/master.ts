@@ -21,19 +21,19 @@ async function recursiveRootAccess(ns: NS, host: string, level: number, ports: n
         await recursiveRootAccess(ns, neighbor, level, ports);
       }
     } else if (reqHackingLevel <= level && reqPorts <= ports) {
-      if (ports >= 1) {
+      if (ns.fileExists("BruteSSH.exe", "home")) {
         ns.brutessh(neighbor);
       }
-      if (ports >= 2) {
+      if (ns.fileExists("FTPCrack.exe", "home")) {
         ns.ftpcrack(neighbor);
       }
-      if (ports >= 3) {
+      if (ns.fileExists("RelaySMTP.exe", "home")) {
         ns.relaysmtp(neighbor);
       }
-      if (ports >= 4) {
+      if (ns.fileExists("HTTPWorm.exe", "home")) {
         ns.httpworm(neighbor);
       }
-      if (ports >= 5) {
+      if (ns.fileExists("SQLInject.exe", "home")) {
         ns.sqlinject(neighbor);
       }
       ns.nuke(neighbor);
@@ -60,8 +60,9 @@ function distribute(ns: NS, program: string, threads: number, args: string): num
     const max_threads = getMaxThreads(ns, host, program);
     const num_threads = Math.min(remaining_threads, max_threads);
     if (num_threads > 0) {
-      remaining_threads -= num_threads;
-      ns.exec(program, host, num_threads, args);
+      if (ns.exec(program, host, num_threads, args)) {
+        remaining_threads -= num_threads;
+      }
     }
   }
   return remaining_threads;
@@ -89,7 +90,7 @@ export async function main(ns: NS): Promise<void> {
   ns.tprint(`Next hack at level ${next_hack_level} with ${next_hack_ports} ports`);
 
   // starting pserver_updater.js
-  ns.exec("pserver_updater.js", "home", 1, ns.args[0] as string);
+  // ns.exec("pserver_updater.js", "home", 1, ns.args[0] as string);
 
   while (true) {
     const level = ns.getHackingLevel();
@@ -99,7 +100,7 @@ export async function main(ns: NS): Promise<void> {
     // ns.scriptKill("master_waiter.js", "home")
 
     // if next hack is available, do it
-    if (ns.getHackingLevel() >= next_hack_level && getPortsAvailable(ns) >= next_hack_ports) {
+    if (true) {//(ns.getHackingLevel() >= next_hack_level && getPortsAvailable(ns) >= next_hack_ports) {
       next_hack_level = Infinity;
       next_hack_ports = Infinity;
       owned = new Set<string>();
@@ -107,32 +108,34 @@ export async function main(ns: NS): Promise<void> {
       // getting root access on all possible computers
       owned.add("home");
       await recursiveRootAccess(ns, "home", level, ports);
-      ns.tprint(`Next hack at level ${next_hack_level} with ${next_hack_ports} ports`);
+      // ns.tprint(`Next hack at level ${next_hack_level} with ${next_hack_ports} ports`);
     }
 
     // for (const host of owned) {
-    //   await ns.scp("weaken.js", "home", host);
+    //   const contracts = ns.ls(host, ".cct");
+    //   if (contracts.length > 0) {
+    //     ns.tprint(`Contract on ${host}: ${contracts}`)
+    //   }
     // }
 
     // hacking target from all owned computers  
     money = Math.max(1, ns.getServerMoneyAvailable(target));
     weakenThreads = Math.ceil((ns.getServerSecurityLevel(target) - securityThreshold) / ns.weakenAnalyze(1));
-    hackThreads = Math.ceil((ns.hackAnalyzeThreads(target, money)));
+    hackThreads = Math.ceil((ns.hackAnalyzeThreads(target, money / 2)));
     growThreads = Math.ceil(ns.growthAnalyze(target, (moneyThreshold / money)));
     // ownedThreads = [...owned].reduce((previousValue, currentValue) => previousValue + getMaxThreads(ns, currentValue, "grow.js"), 0);
 
     if (ns.getServerSecurityLevel(target) > securityThreshold) {
       ns.print(`Weakening ${target} with ${weakenThreads} threads: ${ns.getWeakenTime(target) / 1000}s`);
-      distribute(ns, "weaken.js", weakenThreads, target);
-      await ns.sleep(ns.getWeakenTime(target));
+      if (distribute(ns, "weaken.js", weakenThreads, target) == weakenThreads) {
+        await ns.sleep(ns.getWeakenTime(target) + 5000);
+      }
     } else if (ns.getServerMoneyAvailable(target) < moneyThreshold) {
       ns.print(`Growing ${target} with ${growThreads} threads: ${ns.getGrowTime(target) / 1000}s`);
-      distribute(ns, "grow.js", growThreads, target);
-      await ns.sleep(ns.getGrowTime(target));
+      (distribute(ns, "grow.js", growThreads, target) == growThreads) && await ns.sleep(ns.getGrowTime(target) + 5000);
     } else {
       ns.print(`Hacking ${target} with ${hackThreads} threads: ${ns.getHackTime(target) / 1000}s`);
-      distribute(ns, "hack.js", hackThreads, target);
-      await ns.sleep(ns.getHackTime(target));
+      (distribute(ns, "hack.js", hackThreads, target) == hackThreads) && await ns.sleep(ns.getHackTime(target) + 5000);
     }
 
     // for (const host of owned) {
