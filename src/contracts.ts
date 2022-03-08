@@ -172,6 +172,73 @@ function algTrading4(input: Array<any>): number {
 }
 
 
+// Unique Paths in a Grid
+
+function binom(m: number, n: number): number {
+  if (n === 0 || n === m) { return 1; }
+  if (n > m) { return 0; }
+  return binom(m - 1, n - 1) + binom(m - 1, n);
+}
+
+function uniquePaths1(input: Array<number>): number {
+  const [m, n] = input;
+
+  return binom(m + n, n);
+}
+
+/**
+ * gives the number of unique D/R paths that pass through all the provided points, points being [row, column] coordinate pair arrays
+ */
+function paths_between(...points: Array<Array<number>>): number {
+  points.sort((a, b) => a[0] - b[0]);
+
+  // ensuring there's actually a path between all the points
+  for (let i = 0; i < points.length - 1; i++) {
+    if (points[i][1] > points[i + 1][1]) {
+      return 0;
+    }
+  }
+
+  let paths = 1;
+  for (let i = 0; i < points.length - 1; i++) {
+    paths *= uniquePaths1([points[i + 1][0] - points[i][0], points[i + 1][1] - points[i][1]]);
+  }
+
+  return paths;
+}
+
+export function combinations<T>(elements: Array<T>): Array<Array<T>> {
+  if (elements.length === 0) { return [[]]; }
+
+  const result = [];
+  const childCombinations = combinations(elements.slice(1));
+  result.push(...childCombinations.map(c => [elements[0], ...c]));
+  result.push(...childCombinations);
+  return result;
+}
+
+function uniquePaths2(board: Array<Array<number>>): number {
+  const [m, n] = [board.length, board[0].length];
+  const points = [];
+  let paths = 0;
+
+  // build array of obstacles
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j < n; j++) {
+      if (board[i][j] === 1) {
+        points.push([i, j]);
+      }
+    }
+  }
+
+  // count paths with inclusion-exclusion principle
+  for (const i of combinations(points)) {
+    paths += i.length % 2 < Number.EPSILON ? paths_between([0, 0], [m - 1, n - 1], ...i) : -1 * paths_between([0, 0], [m - 1, n - 1], ...i);
+  }
+
+  return Math.round(paths);
+}
+
 const solution_functions: { [key: string]: Solver } = {
   "Find Largest Prime Factor": largestPrimeFactor,
   "Subarray with Maximum Sum": maxSubarraySum,
@@ -181,6 +248,8 @@ const solution_functions: { [key: string]: Solver } = {
   "Algorithmic Stock Trader II": algTrading2,
   "Algorithmic Stock Trader III": algTrading3,
   "Algorithmic Stock Trader IV": algTrading4,
+  "Unique Paths in a Grid I": uniquePaths1,
+  "Unique Paths in a Grid II": uniquePaths2,
 };
 
 export async function main(ns: NS): Promise<void> {
