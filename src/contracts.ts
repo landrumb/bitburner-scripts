@@ -11,6 +11,7 @@ interface Solver {
   (a: any): any;
 }
 
+// Largest Prime Factor
 function primeFactors(n: number): number[] {
   const factors = [];
   let d = 2;
@@ -29,6 +30,7 @@ function largestPrimeFactor(n: number): number {
   return factors[factors.length - 1];
 }
 
+
 // Subarray with Maximum Sum
 function maxSubarraySum(arr: number[]): number {
   let maxSum = -Infinity;
@@ -40,19 +42,145 @@ function maxSubarraySum(arr: number[]): number {
   return maxSum;
 }
 
-// Total Ways to Sum
+function maxSubarraySumIndices(arr: number[]): Array<any> {
+  let maxSum = [-Infinity, 0, 0];
+  let currentSum = [-Infinity, 0, 0];
+  for (let i = 0; i < arr.length; i++) {
+    currentSum = arr[i] > currentSum[0] + arr[i] ? [arr[i], i, i] : [currentSum[0] + arr[i], currentSum[1], i];
+    maxSum = currentSum[0] > maxSum[0] ? currentSum : maxSum;
+  }
+  return maxSum;
+}
+
+// Total Ways to Sum (currently doesn't work)
+function p_k(n: number, k: number): number {
+  if (n < 0) { return 0; }
+  if (n <= 1) { return 1; }
+  if (k <= 1) { return 1; }
+
+  return p_k(n - 1, k - 1) + p_k(n - k, k);
+}
+
 export function partitions(n: number): number {
   if (n <= 1) { return 1; }
   let sum = 0;
-  for (let k = 1; k * (3 * k - 1) / 2 <= n; k++) {
-    sum += ((-1) ** (k + 1)) * partitions(n - k * (3 * k - 1) / 2);
+  for (let k = 1; k <= n; k++) {
+    sum += p_k(n, k);
   }
   return sum;
 }
 
+
+// Array Jumping Game
+function arrJumpGame(arr: number[]): number {
+  let max = arr[0];
+  const current = 0;
+  for (let i = 0; i <= max; i++) {
+    max = Math.max(max, i + arr[i]);
+    if (max >= arr.length - 1) { return 1; }
+  }
+  return 0;
+}
+
+
+// Merge Overlapping Intervals
+function mergeIntervals(intervals: Array<Array<number>>): Array<Array<number>> {
+  const sorted = intervals.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const interval of sorted) {
+    if (merged.length === 0 || merged[merged.length - 1][1] < interval[0]) {
+      merged.push(interval);
+    } else {
+      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], interval[1]);
+    }
+  }
+  return merged;
+}
+
+
+// Algorithmic Trading
+
+/**
+ * Converts an array of stock prices into an array of deltas, each delta representing a continuous run of increasing or decreasing prices
+ */
+export function deltize(arr: Array<number>): Array<number> {
+  const deltas = [0];
+  let i = 0;
+  let increasing = arr[0] <= arr[1];
+  for (let j = 1; j < arr.length - 1; j++) {
+    if (arr[j] == 0) { continue; }
+
+    if (increasing == arr[j - 1] < arr[j]) {
+      deltas[i] += arr[j] - arr[j - 1];
+    } else {
+      increasing = !increasing;
+      deltas.push(arr[j] - arr[j - 1]);
+      i++;
+    }
+  }
+  return deltas;
+}
+
+function algTrading1(prices: Array<number>): number {
+  const deltas = deltize(prices);
+  const maxDelta = maxSubarraySum(deltas);
+
+  return maxDelta;
+}
+
+function algTrading2(prices: Array<number>): number {
+  const deltas = deltize(prices);
+
+  return deltas.reduce((prev, curr) => prev + Math.max(0, curr), 0);
+}
+
+function algTrading3(prices: Array<number>): number {
+  const deltas = deltize(prices);
+  const [maxDelta, start, end] = maxSubarraySumIndices(deltas);
+
+  return maxDelta - maxSubarraySum(deltas.slice(start, end).map(n => -1 * n));
+}
+
+function algTrading4(input: Array<any>): number {
+  const [k, prices] = input;
+  const deltas = deltize(prices);
+  const maxDelta = maxSubarraySum(deltas);
+  let positiveRuns = 0;
+
+  for (const n of deltas) {
+    if (n > 0) {
+      positiveRuns++;
+    }
+  }
+
+  if (positiveRuns <= k) {
+    return algTrading3(prices);
+  }
+
+  if (k >= 2) {
+    const minIndex = deltas.indexOf(Math.max(...deltas.map(d => d > 0 ? 0 : d))); // index of the negative run with the smallest magnitude
+    const preIndex = Math.max(0, minIndex - 1);
+    const postIndex = Math.min(deltas.length - 1, minIndex + 1);
+
+    const modifiedDeltas = deltas.slice(0, preIndex);
+    modifiedDeltas.push(deltas.slice(preIndex, postIndex + 1).reduce((prev, curr) => prev + curr, 0));
+    modifiedDeltas.concat(deltas.slice(postIndex + 1));
+    return algTrading4([modifiedDeltas, k]);
+  } else {
+    return maxDelta;
+  }
+}
+
+
 const solution_functions: { [key: string]: Solver } = {
   "Find Largest Prime Factor": largestPrimeFactor,
-  "Subarray with Maximum Sum": maxSubarraySum
+  "Subarray with Maximum Sum": maxSubarraySum,
+  "Array Jumping Game": arrJumpGame,
+  "Merge Overlapping Intervals": mergeIntervals,
+  "Algorithmic Stock Trader I": algTrading1,
+  "Algorithmic Stock Trader II": algTrading2,
+  "Algorithmic Stock Trader III": algTrading3,
+  "Algorithmic Stock Trader IV": algTrading4,
 };
 
 export async function main(ns: NS): Promise<void> {
