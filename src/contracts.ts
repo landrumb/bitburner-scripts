@@ -190,7 +190,7 @@ function uniquePaths1(input: Array<number>): number {
  * gives the number of unique D/R paths that pass through all the provided points, points being [row, column] coordinate pair arrays
  */
 function paths_between(...points: Array<Array<number>>): number {
-  points.sort((a, b) => a[0] - b[0]);
+  points.sort((a, b) => a[0] == b[0] ? a[1] - b[1] : a[0] - b[0]);
 
   // ensuring there's actually a path between all the points
   for (let i = 0; i < points.length - 1; i++) {
