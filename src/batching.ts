@@ -30,7 +30,7 @@ function distribute(ns: NS, program: string, threads: number, args: string): num
   const max_threads = getMaxThreads(ns, host, program);
   const num_threads = Math.min(remaining_threads, max_threads);
   if (num_threads > 0) {
-    if (ns.exec(program, host, num_threads * 50, args)) {
+    if (ns.exec(program, host, num_threads, args)) {
       remaining_threads -= num_threads;
     }
   }
@@ -77,7 +77,7 @@ export async function main(ns: NS): Promise<void> {
 
   const money = Math.max(1, ns.getServerMoneyAvailable(target));
   const weakenThreads = Math.ceil((ns.getServerSecurityLevel(target) - securityThreshold) / ns.weakenAnalyze(1));
-  const hackThreads = Math.ceil((ns.hackAnalyzeThreads(target, money)));
+  const hackThreads = Math.ceil((ns.hackAnalyzeThreads(target, money / 2)));
   const growThreads = Math.ceil(ns.growthAnalyze(target, (moneyThreshold / money)));
   // ownedThreads = [...owned].reduce((previousValue, currentValue) => previousValue + getMaxThreads(ns, currentValue, "grow.js"), 0);
 
